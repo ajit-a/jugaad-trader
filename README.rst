@@ -1,3 +1,17 @@
+**********
+Very imp to make KiteTicker work
+https://github.com/jugaad-py/jugaad-trader/issues/44#issuecomment-1200493371
+1. in file jugaad_trader/zerodha.py
+   -        return KiteTicker(api_key=api_key, access_token=self.enc_token+'&user_id='+self.user_id, root='wss://ws.zerodha.com')
+   +        return KiteTicker(api_key=api_key, access_token=urllib.parse.quote_plus(self.enc_token)+'&user_id='+self.user_id, root='wss://ws.zerodha.com')
+2. In kiteconnect package ticker.py
+   -         self.socket_url = "{root}?api_key={api_key}"\
+            "&enctoken={access_token}".format(
+                root=self.root,
+                api_key=api_key,
+                access_token=access_token
+            )
+
 *************
 Jugaad Trader
 *************

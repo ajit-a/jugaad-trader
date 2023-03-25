@@ -9,6 +9,7 @@ import json
 import configparser
 import os
 import pickle
+import urllib
 
 
 import requests
@@ -221,7 +222,8 @@ class Zerodha(KiteConnect):
             self.user_id = self.user_id
         if self.user_id is None:
             raise Exception("\nCould not find the session, Please start a session using \n\n$ jtrader zerodha startsession")
-        return KiteTicker(api_key=api_key, access_token=self.enc_token+'&user_id='+self.user_id, root='wss://ws.zerodha.com')
+        return KiteTicker(api_key=api_key, access_token=urllib.parse.quote_plus(self.enc_token)+'&user_id='+self.user_id, root='wss://ws.zerodha.com')
+        #return KiteTicker(api_key=api_key, access_token=self.enc_token+'&user_id='+self.user_id, root='wss://ws.zerodha.com')
                             
 class Console(Zerodha):
     """
