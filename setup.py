@@ -13,7 +13,7 @@ with open(os.path.join(this_directory, 'requirements.txt')) as fp:
 with open(os.path.join(this_directory, 'README.rst')) as fp:
     description = fp.read()
 setup(
-  name = 'jugaad-trader',
+  name = 'Swati Ambekar',
   author_email="nomail@nodomain.com",
   author="jugaad-coder",
   version = version,      
