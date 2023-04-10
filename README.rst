@@ -11,6 +11,7 @@ https://github.com/jugaad-py/jugaad-trader/issues/44#issuecomment-1200493371
                 api_key=api_key,
                 access_token=access_token
             )
+3. pip install python-telegram-bot -U --pre (If required)
 
 *************
 Jugaad Trader

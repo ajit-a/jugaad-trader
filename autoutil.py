@@ -19,22 +19,49 @@ NIFTY_TICKER=256265
 INDIA_VIX=264969
 
 PDH_RISK=1000
-BNF_PASSIVE_QTY=25
-NIFTY_PASSIVE_QTY=50
+BNF_PASSIVE_LOTS=1
+BNF_PASSIVE_QTY=BNF_PASSIVE_LOTS*25
+NIFTY_PASSIVE_LOTS=1
+NIFTY_PASSIVE_QTY=NIFTY_PASSIVE_LOTS*50
 PASSIVE_PROFIT=2000
 PASSIVE_TRAIL=1100
-PROFIT_LEG_PRICE=20
-if(datetime.datetime.today().weekday()==1):
+BNF_PROFIT_LEG_PRICE=20
+NIFTY_PROFIT_LEG_PRICE=10
+PASSIVE_MAXLOSS_PER_BASKET=5000
+SHORT_STRADDLE_FROM_DAY=0
+SHORT_STRADDLE_TO_DAY=4
+
+#Below if is for Monday testing
+if(datetime.datetime.today().weekday()==10):
+    PASSIVE_PROFIT=200
+    PASSIVE_TRAIL=140
+    #Profit leg to be tested later
+    BNF_PROFIT_LEG_PRICE=100
+    NIFTY_PROFIT_LEG_PRICE=80
+
+if(datetime.datetime.today().weekday()==0):
+    PASSIVE_PROFIT=1200
+    PASSIVE_TRAIL=1100
+    BNF_PROFIT_LEG_PRICE=100
+    NIFTY_PROFIT_LEG_PRICE=80
+elif(datetime.datetime.today().weekday()==1):
     PASSIVE_PROFIT=2000
     PASSIVE_TRAIL=1100
-    PROFIT_LEG_PRICE=100
+    BNF_PROFIT_LEG_PRICE=100
+    NIFTY_PROFIT_LEG_PRICE=80
 elif(datetime.datetime.today().weekday()==2):
     PASSIVE_PROFIT=3000
     PASSIVE_TRAIL=2200
-    PROFIT_LEG_PRICE=50
+    BNF_PROFIT_LEG_PRICE=50
+    NIFTY_PROFIT_LEG_PRICE=30
 elif(datetime.datetime.today().weekday()==3):
     PASSIVE_PROFIT=4000
     PASSIVE_TRAIL=3200
+elif(datetime.datetime.today().weekday()==4):
+    PASSIVE_PROFIT=1200
+    PASSIVE_TRAIL=1100
+    BNF_PROFIT_LEG_PRICE=100
+    NIFTY_PROFIT_LEG_PRICE=80
 
 i=0
 token_price_count = {}
@@ -276,6 +303,20 @@ def shortStraddleOption(ce_pe,idx):
     else:
         #print("getgenITMOption:"+str(getgenITMOption(ce_pe,val,idx)))
         return spTypeMap[str(getATMPEVal(val,idx))+ce_pe]
+def shortStrangleOption(ce_pe,idx,diff):
+    if(idx=="NIFTY"):
+        val=int(token_price_ltp[NIFTY_TICKER])
+    elif(idx=="BNF"):
+        val=int(token_price_ltp[BNF_TICKER])
+    if(val==0):
+        return 0
+    #print("....val:"+str(val))
+    if(val%100<50):
+        #print("getgenITMOption:"+str(getgenITMOption(ce_pe,val,idx)))
+        return spTypeMap[str(getATMCEVal(val,idx)-diff)+ce_pe]
+    else:
+        #print("getgenITMOption:"+str(getgenITMOption(ce_pe,val,idx)))
+        return spTypeMap[str(getATMPEVal(val,idx)-diff)+ce_pe]
 def getMA(symbol):
     try:
         if("BANKNIFTY" in symbol):

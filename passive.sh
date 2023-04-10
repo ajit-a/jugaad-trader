@@ -17,8 +17,8 @@ MINS=`date --date="-${BACK} day 5 hour 30 min" +%M`
 
 if [ x$1 = "x" ]
 then
-	echo "Please provide access token"
-	exit
+	echo "Running jugaad, no access token required"
+	#exit
 fi
 #python3 OMS_passive_bulk.py $1 $API_SECRET $API_KEY > oms.log 2> oms.err &
 pids+=($!)
@@ -98,7 +98,7 @@ MONTH=`date --date="-${BACK} day" +%m`
 DATE=`date --date="-${BACK} day" +%d`
 YEAR=`date --date="-${BACK} day" +%Y`
 
-REF="--referer https://www1.nseindia.com/products/content/equities/equities/homepage_eq.htm"
+REF="--referer https://archives.nseindia.com/products/content/equities/equities/homepage_eq.htm"
 AGENT="--user-agent=\"Mozilla/5.0\""
 FILE1=cm${DATE}${WMONTH}${YEAR}bhav.csv
 FILE2=fo${DATE}${WMONTH}${YEAR}bhav.csv
@@ -109,14 +109,14 @@ FILE4=ind_close_all_${DATE}${MONTH}${YEAR}.csv
 STATUS=1
 while [ $STATUS -ne 0 ]
 do
-  wget -c ${REF} ${AGENT} https://www1.nseindia.com/content/historical/EQUITIES/${YEAR}/${WMONTH}/${FILE1}.zip
+  wget -c ${REF} ${AGENT} https://archives.nseindia.com/content/historical/EQUITIES/${YEAR}/${WMONTH}/${FILE1}.zip
   STATUS=$?
   sleep 1
 done
 STATUS=1
 while [ $STATUS -ne 0 ]
 do
-  wget -c ${REF} ${AGENT} https://www1.nseindia.com/content/indices/${FILE4}
+  wget -c ${REF} ${AGENT} https://archives.nseindia.com/content/indices/${FILE4}
   STATUS=$?
   sleep 1
 done

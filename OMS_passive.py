@@ -48,8 +48,6 @@ co_sl_orders = {}
 MAXORDERS=1
 MAXPROFIT=10000
 MAXLOSS=-5000
-BNFMAXPROFITPERLOT=60
-BNFMAXLOSSPERLOT=40
 straddleadjusted=True
 
 bnfvalue=0
@@ -59,13 +57,6 @@ nfdirection="DOWN"
 
 token_price_ltp[BNF_TICKER]=bnfvalue
 token_price_ltp[NIFTY_TICKER]=nfvalue
-
-BNF_LOT_SIZE=25
-BNF_TRADE_LOTS=1
-BNF_TRADE_QTY=BNF_LOT_SIZE*BNF_TRADE_LOTS
-NIFTY_LOT_SIZE=50
-NIFTY_TRADE_LOTS=1
-NIFTY_TRADE_QTY=NIFTY_LOT_SIZE*NIFTY_TRADE_LOTS
 
 blockList = []
 try:
@@ -77,29 +68,89 @@ except OSError as oe:
     #if oe.errno != errno.EEXIST:
     print("blocklist.csv doesnt exists")
 
-kite = Zerodha()
 session_file=".zsession"
-def startsession():
-    user_id = click.prompt("User ID >")
-    password = click.prompt("Password >", hide_input=True)
-    kite.user_id = user_id
-    kite.password = password
-    j = kite.login_step1()
-    if j['status'] == 'error':
-        click.echo(click.style("Error: {}".format(j['message']), fg="red"))
-        return
-    kite.twofa = click.prompt("Pin >", hide_input=True)
-    j = kite.login_step2(j)
-    if j['status'] == 'error':
-        click.echo(click.style("Error: {}".format(j['message']), fg="red"))
-        return
-    kite.enc_token = kite.r.cookies['enctoken']
-    p = kite.profile()
 
-    click.echo(click.style("Logged in successfully as {}".format(p['user_name']), fg='green'))
-    with open(os.path.join(app_dir, session_file), "wb") as fp:
-        pickle.dump(kite.reqsession, fp)
-    click.echo("Saved session successfully")
+mod_time=time.ctime(os.path.getmtime(session_file))
+file_size = os.path.getsize(session_file)
+print("mod_time:"+str(mod_time)+" size:"+str(file_size))
+#Mon Mar 20 22:08:31 2023
+day=int(mod_time.split()[2])
+tday=int(datetime.datetime.today().day)
+print(day)
+print(datetime.datetime.today().day)
+#year,month,day,hour,minute,second=time.localtime(mod_time)[:-3]
+#print("Date modified: %02d/%02d/%d %02d:%02d:%02d"%(day,month,year,hour,minute,second))
+
+needlogin = True
+if (day == tday and file_size > 0):
+    print("Will read from session file")
+    needlogin = False
+else:
+    print("Clearing stale session file")
+    with open(session_file, 'w'): pass
+
+pin=""
+passwd=""
+user=""
+
+print("Got "+str(len(sys.argv))+" args")
+if(len(sys.argv) == 4):
+    pin = sys.argv[1]
+    passwd = sys.argv[2]
+    user = sys.argv[3]
+
+kite = Zerodha()
+def startautosession():
+    try:
+        kite.user_id = user
+        kite.password = passwd
+        j = kite.login_step1()
+        if j['status'] == 'error':
+            click.echo(click.style("Error: {}".format(j['message']), fg="red"))
+            return
+        kite.twofa = pin
+        j = kite.login_step2(j)
+        if j['status'] == 'error':
+            click.echo(click.style("Error: {}".format(j['message']), fg="red"))
+            return
+        kite.enc_token = kite.r.cookies['enctoken']
+        p = kite.profile()
+
+        click.echo(click.style("Logged in successfully as {}".format(p['user_name']), fg='green'))
+        with open(os.path.join(app_dir, session_file), "wb") as fp:
+            pickle.dump(kite.reqsession, fp)
+        click.echo("Saved session successfully")
+    except Exception as e:
+        print("Exception in startautosession:"+repr(e))
+        with open(session_file, 'w'): pass
+
+def startsession():
+    try:
+        user_id = click.prompt("User ID >")
+        password = click.prompt("Password >", hide_input=True)
+        kite.user_id = user_id
+        kite.password = password
+        j = kite.login_step1()
+        if j['status'] == 'error':
+            click.echo(click.style("Error: {}".format(j['message']), fg="red"))
+            return
+        kite.twofa = click.prompt("Pin >", hide_input=True)
+        j = kite.login_step2(j)
+        if j['status'] == 'error':
+            click.echo(click.style("Error: {}".format(j['message']), fg="red"))
+            return
+        kite.enc_token = kite.r.cookies['enctoken']
+        p = kite.profile()
+
+        click.echo(click.style("Logged in successfully as {}".format(p['user_name']), fg='green'))
+        with open(os.path.join(app_dir, session_file), "wb") as fp:
+            pickle.dump(kite.reqsession, fp)
+        click.echo("Saved session successfully")
+    except Exception as e:
+        print("Exception in startsession:"+repr(e))
+        with open(session_file, 'w'): pass
+
+print("Logging in for user:"+user)
 
 try:
     #kite.load_session("/home/swati/autotrader/jugaad-trader/.zsession")
@@ -107,7 +158,11 @@ try:
 except Exception as e:
     logging.error("Existing session not found:"+repr(e))
     logging.info("Starting new session")
-    startsession()
+    if needlogin == True:
+        if(len(sys.argv) == 4):
+            startautosession()
+        else:
+            startsession()
 
 orderIds = {}
 blockedSymbols = []
@@ -1008,6 +1063,7 @@ def readLtpFromFifo(treadName):
             data = fifo.read()
             if len(data) == 0:
                 continue
+            #print("line:"+data)
             lines=data.split("\n")
             lastltptime = datetime.datetime.now()
             for line in lines:
@@ -1418,9 +1474,9 @@ def sendShortStraddle(idx,direction):
     passiveOrders.clear()
     qty=0
     if(idx=="NIFTY"):
-        qty=50
+        qty=NIFTY_PASSIVE_QTY
     elif(idx=="BNF"):
-        qty=BNF_TRADE_QTY
+        qty=BNF_PASSIVE_QTY
     if(direction=="UP"):
         TS1=raw_symbols[shortStraddleOption("PE",idx)]
         TS2=raw_symbols[shortStraddleOption("CE",idx)]
@@ -1508,7 +1564,8 @@ def cancel_squareoff_open_orders(threadName):
             if( shortStraddle_done==False and datetime.datetime.today().weekday() >=0 and datetime.datetime.today().weekday() <=5):
                 if(datetime.datetime.now().hour==9 and datetime.datetime.now().minute==14 and datetime.datetime.now().second>=59):
                 #if(True):
-                    if( datetime.datetime.today().weekday() >=1 and datetime.datetime.today().weekday() <=3):
+                    #set 0 below for testing on Monday
+                    if( datetime.datetime.today().weekday() >=SHORT_STRADDLE_FROM_DAY and datetime.datetime.today().weekday() <=SHORT_STRADDLE_TO_DAY):
                         shortStraddle_done=True
                         #token_price_ltp[BNF_TICKER]=35120.3
                         #token_price_ltp[NIFTY_TICKER]=15720.2
@@ -1522,15 +1579,15 @@ def cancel_squareoff_open_orders(threadName):
                             nfdirection="UP"
                         else:
                             nfdirection="DOWN"
-                        time.sleep(0.85)
+                        time.sleep(0.998)
                         t1 = threading.Thread(target=sendShortStraddle, args=("BNF",bnfdirection,))
                         #t2 = threading.Thread(target=sendShortStraddle, args=("NIFTY",nfdirection,))
                         t1.start()
                         #t2.start() #AMIT
                     #token_high_price[3834113]=195
                     #token_price_ltp[3834113]=200
-                    t3 = threading.Thread(target=preparePDHSymbols,)
-                    t3.start()
+                    #t3 = threading.Thread(target=preparePDHSymbols,)
+                    #t3.start()
                 #Done sleep until 9:16
                 elif(datetime.datetime.now().hour==9 and datetime.datetime.now().minute<=16):
                     #print("Waiting for SS")
@@ -1551,23 +1608,40 @@ def cancel_squareoff_open_orders(threadName):
                     item = passiveStatusCache[idx]
                     cost=0
                     currentCost=0
+                    profitable_leg = None
+                    CURR_QTY=0
+                    CURR_LOTS=0
+                    LEG_LIMIT=0
+                    if(idx == "BNF"):
+                        CURR_QTY=BNF_PASSIVE_QTY
+                        CURR_LOTS=BNF_PASSIVE_LOTS
+                        LEG_LIMIT=BNF_PROFIT_LEG_PRICE
+                    elif(idx == "NIFTY"):
+                        CURR_QTY=NIFTY_PASSIVE_QTY
+                        CURR_LOTS=NIFTY_PASSIVE_LOTS
+                        LEG_LIMIT=NIFTY_PROFIT_LEG_PRICE
                     for ts in item:
                         cost+=item[ts]
                         currentCost+=token_price_ltp[symbols_token[ts]]
                         print(str(idx)+" currentCost:"+str(currentCost))
-                        logging.info("LTP:"+ts+":"+str(token_price_ltp[symbols_token[ts]]))
-                    currentCost=currentCost*BNF_TRADE_QTY
-                    cost=cost*BNF_TRADE_QTY
+                        logging.info("LTP:"+ts+":"+str(token_price_ltp[symbols_token[ts]])+" for:"+idx)
+                       #Will see how to implement this for exit
+                        if(token_price_ltp[symbols_token[ts]] < LEG_LIMIT):
+                            profitable_leg = ts
+                            logging.info(str(ts)+": is profitable with ltp:"+str(token_price_ltp[symbols_token[ts]])+" limit:"+str(LEG_LIMIT))
+                    currentCost=currentCost*CURR_QTY
+                    cost=cost*CURR_QTY
                     logging.info(str(idx)+" currentCost:"+str(currentCost)+" cost:"+str(cost)+" pnl:"+str(cost-currentCost))
-                    if(currentCost-cost>=5000):
+                    #Add logic to exit profitable leg as per the day
+                    if(currentCost-cost >= PASSIVE_MAXLOSS_PER_BASKET * CURR_LOTS):
                         logging.info("SL for passive hit")
                         exitShortStraddle(idx)
                         exitedList.append(idx)
-                    if(passivelockActivated[idx]>0 and currentCost>(passivelockActivated[idx] + PASSIVE_TRAIL)):
+                    if(passivelockActivated[idxx]>0 and currentCost>(passivelockActivated[idxx] + (PASSIVE_TRAIL * CURR_LOTS))):
                         logging.error("Exiting:Locking was activated and current cost reduced from:"+str(passivelockActivated[idx])+" to:"+str(currentCost))
                         exitShortStraddle(idx)
                         exitedList.append(idx)
-                    elif(cost-currentCost>=PASSIVE_PROFIT):
+                    elif(cost-currentCost>=PASSIVE_PROFIT * CURR_LOTS):
                         if(currentCost<passivelockActivated[idx]):
                             print("Locking Activated "+str(idx)+" currentCost:"+str(currentCost))
                             logging.error("Locking Activated "+str(idx)+" currentCost:"+str(currentCost))
@@ -1794,6 +1868,25 @@ for tName in ioithreadList:
    ioithreadID += 1
 
 populateExistingData()
+if False:
+    order_id = sendOrder(
+        variety_=kite.VARIETY_REGULAR,
+        tradingsymbol_="TCS",
+        exchange_="NSE",
+        transaction_type_="BUY",
+        quantity_=1,
+        order_type_=kite.ORDER_TYPE_LIMIT,
+        price_=3120,
+        product_=kite.PRODUCT_MIS)
+    oid1 = TradeGTT(
+        symbol="INFY",
+        price=1380,
+        squareoff=1450,
+        stoploss=1290,
+        trailing_stoploss=5,
+        direction="BUY",
+        qty=1
+        )
 #readMA()
 #print(str(getMA("APOLLOTYRE")))
 #print(str(getEMA("APOLLOTYRE")))
