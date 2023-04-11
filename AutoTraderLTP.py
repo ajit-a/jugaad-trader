@@ -15,6 +15,7 @@ import datetime
 import os
 import time
 import asyncio
+import glob
 
 os.environ["TZ"] = "Asia/Kolkata"
 time.tzset()
@@ -23,6 +24,15 @@ app_dir=os.getcwd()
 
 kite = Zerodha()
 session_file=".zsession"
+
+try:
+    sess_files = glob.glob('.zsession*')
+    session_file = sess_files[0]
+    logging.info("Considering session file:"+str(session_file))
+except Exception as e:
+    logging.error("Error while reading session file")
+    sys.exit()
+
 def startsession():
     user_id = click.prompt("User ID >")
     password = click.prompt("Password >", hide_input=True)
