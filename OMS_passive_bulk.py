@@ -1516,6 +1516,7 @@ def sendShortStraddle(idx,direction):
             TS2=raw_symbols[shortStrangleOption("PE",idx,200)]
     #for index, kite in enumerate(kites):
     index=0
+    tmpCache = {}
     for index,kite in kites.items():
         SSOID1=sendOrder(
                  variety_=kite.VARIETY_REGULAR,
@@ -1554,10 +1555,10 @@ def sendShortStraddle(idx,direction):
             squareoff_orders[SSOID2]=ticker
             passiveOrders.append(apikey[index]+str(SSOID1))
             passiveOrders.append(apikey[index]+str(SSOID2))
-            tmpCache = {}
             tmpCache[TS1]=0
             tmpCache[TS2]=0
             passiveStatusCache[apikey[index]+"^"+idx]=copy.deepcopy(tmpCache)
+            tmpCache.clear()
     print("sendShortStraddle:passiveStatusCache:"+str(passiveStatusCache))
 
     #reconPositions()
@@ -1669,7 +1670,7 @@ def cancel_squareoff_open_orders(threadName):
                             logging.info(str(ts)+": is profitable with ltp:"+str(token_price_ltp[symbols_token[ts]])+" limit:"+str(LEG_LIMIT))
                     currentCost=currentCost*CURR_QTY
                     cost=cost*CURR_QTY
-                    logging.info(str(idx)+" currentCost:"+str(currentCost)+" cost:"+str(cost)+" pnl:"+str(cost-currentCost)+" for:"+idx)
+                    logging.info(str(idx)+" currentCost:"+str(currentCost)+" cost:"+str(cost)+" pnl:"+str(cost-currentCost)+" for:"+apik)
                     #Add logic to exit profitable leg as per the day
                     if(currentCost-cost >= PASSIVE_MAXLOSS_PER_BASKET * CURR_LOTS):
                         logging.info("SL for passive hit for:"+str(idxx))
@@ -1691,9 +1692,11 @@ def cancel_squareoff_open_orders(threadName):
             logging.error("Exception in CANCEL thread:"+str(e))
             logging.error(repr(e))
         if( datetime.datetime.today().weekday() >=SHORT_STRADDLE_FROM_DAY and datetime.datetime.today().weekday() <=SHORT_STRADDLE_TO_DAY ):
-            if(datetime.datetime.now().hour>=15):
+            if(datetime.datetime.now().hour>=15 and datetime.datetime.now().minute>=1):
                 for idxx in passiveStatusCache:
                     exitShortStraddle(idxx)
+        if(datetime.datetime.now().hour>=15 and datetime.datetime.now().minute>=30):
+            sys.exit()
 
 def modifyCO(j,price,uindex):
     print("modifyCO called for:"+str(j['opp_orderid'])+" price:"+str(price))

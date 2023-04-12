@@ -81,12 +81,49 @@ async def capture_access_token(update: Update, context: ContextTypes.DEFAULT_TYP
         reply_markup=ForceReply(selective=True),
     )
 
+async def capture_telegram_details(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a message when the command /help is issued."""
+    await update.message.reply_text(
+        "Enter your userid:pass !",
+        reply_markup=ForceReply(selective=True),
+    )
+
+async def extract_data(update: Update) -> None:
+    if update.message.reply_to_message == None:
+        return
+    original_msg=update.message.reply_to_message.text
+    if original_msg != "Enter your userid:pass !":
+        return
+    userid=update.message.from_user.id
+    if userid in apikeys:
+        await update.message.reply_text("User already exists. Please contact admin, if you want to overwrite your details")
+        return
+    msg="Incorrect format for:"+str(userid)
+    try:
+        userText = update.message.text
+        loginid = userText.split(':')[0].strip()
+        passw = userText.split(':')[1].strip()
+        msg="Captured details for:"+str(loginid)+" id:"+str(userid)
+        f=open("static_secretdata.csv","a+")
+        f.write(str(userid)+","+passw+","+"XXXX"+","+loginid+'\n')
+        f.close()
+        passwd[userid] = passw
+        apikeys[userid] = "XXXX"
+        userids[userid] = loginid
+    except Exception as e:
+        print(repr(e))
+    print(msg)
+    await update.message.reply_text(msg)
+
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
     if update.message.reply_to_message == None:
         return
     original_msg=update.message.reply_to_message.text
+    if original_msg == "Enter your userid:pass !":
+        await extract_data(update)
+        return
     if original_msg != "Enter your App Code !":
         return
     userText = update.message.text
@@ -104,7 +141,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 print(msg)
                 await update.message.reply_text(msg)
                 #subprocess.Popen(['python', 'OMS_passive.py', pin, passwd[userid], userids[userid]])
-                subprocess.Popen(['python', 'generateSession.py', pin, passwd[userid], userids[userid]])
+                subprocess.call(['python', 'generateSession.py', pin, passwd[userid], userids[userid]])
                 #await update.message.reply_text("Captured token for:"+user+" id:"+str(userid)+" in reply:"+original_msg)
         except Exception as e:
             erromsg = "Error while login: for:"+user+" id:"+str(userid)+" in reply:"+original_msg
@@ -122,7 +159,7 @@ def populate_static_data():
             lines = f.readlines()
         for line in lines:
             tokens = line.strip('\n').split(',')
-            telegramid = tokens[0]
+            telegramid = int(tokens[0])
             passwd[telegramid] = tokens[1]
             apikeys[telegramid] = tokens[2]
             userids[telegramid] = tokens[3]
@@ -140,10 +177,12 @@ def main() -> None:
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("login", capture_access_token))
+    application.add_handler(CommandHandler("register", capture_telegram_details))
 
     supported_commands.add("/start")
     supported_commands.add("/help")
     supported_commands.add("/login")
+    supported_commands.add("/register")
 
     # on non command i.e message - echo the message on Telegram
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
