@@ -1153,19 +1153,23 @@ def OpenPositionsCount():
 
 def squareoff_all_Openorders():
     logging.info("called squareoff_all_Openorders")
-    for idx in apikeyindex:
+    for idx,val in kites.items():
         squareoff_all_Openorders_Logic(idx)
 
 def squareoff_all_Openorders_Logic(idx):
-    logging.info("called squareoff_all_Openorders_Logic")
+    logging.info("called squareoff_all_Openorders_Logic:"+str(idx))
     done=False
-    while not done:
+    ctr=0
+    while not done and ctr<=5:
         try:
             lorders = kites[idx].orders()
             done=True
         except Exception as e:
             logging.error("Error getting positions:".format(e))
             done=False
+            ctr = ctr+1
+    if ctr==6:
+        return
     for k in lorders:
         var = k['variety']
         oid = k['order_id']
@@ -1614,7 +1618,7 @@ def cancel_squareoff_open_orders(threadName):
                             nfdirection="UP"
                         else:
                             nfdirection="DOWN"
-                        time.sleep(0.998)
+                        time.sleep(0.9999)
                         t1 = threading.Thread(target=sendShortStraddle, args=("BNF",bnfdirection,))
                         #t2 = threading.Thread(target=sendShortStraddle, args=("NIFTY",nfdirection,))
                         t1.start()

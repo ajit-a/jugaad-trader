@@ -82,6 +82,19 @@ if(len(sys.argv) == 4):
 
 session_file=".zsession"+user
 
+mod_time=time.ctime(os.path.getmtime(session_file))
+file_size = os.path.getsize(session_file)
+print("mod_time:"+str(mod_time)+" size:"+str(file_size))
+#Mon Mar 20 22:08:31 2023
+day=int(mod_time.split()[2])
+tday=int(datetime.datetime.today().day)
+print(day)
+print(datetime.datetime.today().day)
+
+if (day != tday):
+    print("Deleting existing session file:"+session_file)
+    os.remove(session_file)
+
 kite = Zerodha()
 def startautosession():
     try:
