@@ -130,21 +130,24 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if len(userText) == 6:
         user=update.message.from_user.username
         fname=update.message.from_user.first_name
-        userid=str(update.message.from_user.id)
+        userid=update.message.from_user.id
         pin=userText
         try:
             #print(userids)
+            #print(type(userid))
             if userid not in userids:
-                await update.message.reply_text(str(userid)+" does not exist in the system")
+                msg=str(userid)+" does not exist in the system"
+                print(msg)
+                await update.message.reply_text(msg)
             else:
-                msg="Captured pin for:"+user+" id:"+str(userid)+" in reply:"+original_msg
+                msg="Captured pin for:"+str(user)+" id:"+str(userid)+" in reply:"+original_msg
                 print(msg)
                 await update.message.reply_text(msg)
                 #subprocess.Popen(['python', 'OMS_passive.py', pin, passwd[userid], userids[userid]])
                 subprocess.call(['python', 'generateSession.py', pin, passwd[userid], userids[userid]])
                 #await update.message.reply_text("Captured token for:"+user+" id:"+str(userid)+" in reply:"+original_msg)
         except Exception as e:
-            erromsg = "Error while login: for:"+user+" id:"+str(userid)+" in reply:"+original_msg
+            erromsg = "Error while login: for:"+str(user)+" id:"+str(userid)+" in reply:"+original_msg
             print(errormsg)
             await update.message.reply_text(errormsg)
             print(repr(e))

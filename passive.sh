@@ -347,6 +347,6 @@ then
 	./stop.sh
 	echo "Empty token files...Exiting"
 fi
-python3 OMS_passive.py $1 $API_SECRET $API_KEY > oms.log 2> oms.err &
-#python3 AutoTraderLTP.py bnf_instruments $API_KEY > ltp.log &
+python3 OMS_passive_bulk.py $1 $API_SECRET $API_KEY > oms.log 2> oms.err &
+python3 AutoTraderLTP.py bnf_instruments $API_KEY > ltp.log &
 pids+=($!)
