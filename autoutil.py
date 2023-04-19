@@ -47,12 +47,12 @@ if(datetime.datetime.today().weekday()==0):
 elif(datetime.datetime.today().weekday()==1):
     PASSIVE_PROFIT=2000
     PASSIVE_TRAIL=1100
-    BNF_PROFIT_LEG_PRICE=100
+    BNF_PROFIT_LEG_PRICE=60
     NIFTY_PROFIT_LEG_PRICE=80
 elif(datetime.datetime.today().weekday()==2):
     PASSIVE_PROFIT=3000
     PASSIVE_TRAIL=2200
-    BNF_PROFIT_LEG_PRICE=50
+    BNF_PROFIT_LEG_PRICE=30
     NIFTY_PROFIT_LEG_PRICE=30
 elif(datetime.datetime.today().weekday()==3):
     PASSIVE_PROFIT=4000

@@ -79,6 +79,8 @@ try:
                 userids[apikey[i]] = data[3].strip('\n')
                 apikeyindex[apikey[i]] = i
                 sess_file=".zsession"+userids[apikey[i]]
+                if(not os.path.exists(sess_file)):
+                    continue
                 kites[i] = Zerodha()
                 kites[i].load_session(app_dir+"/"+sess_file)
                 i = i+1
@@ -809,7 +811,12 @@ def populateExistingData():
     korder = {}
     for index, kite in kites.items():
         logging.info("index:"+str(index)+" api:"+apikey[index])
-        korders[apikey[index]] = kite.orders()
+        try:
+            logging.info("Populating orders for index:"+str(index)+" sess:"+str(kite))
+            korders[apikey[index]] = kite.orders()
+        except Exception as e:
+            logging.error("Error populating orders for index:"+str(index)+" sess:"+str(kite))
+            continue
         logging.info("korders populated:"+str(korders))
         for index in korders:
             logging.info("index:"+str(index))
@@ -818,6 +825,7 @@ def populateExistingData():
         #for order in korders[apikey[index]]:
             #if("AMO REQ RECEIVED" == order['status']):
             #print(order)
+            #Need to check if "VALIDATION PENDING" can be picked for passive orders
                 if("OPEN" == order['status'] or order['status'] == "TRIGGER PENDING" or order['status']=="AMO REQ RECEIVED"):
                     try:
                         if(order['parent_order_id']==None or order['parent_order_id']==0):
@@ -904,6 +912,7 @@ def extract_order_update(t,uapi):
     prd_ = t['product']
     var_ = t['variety']
     _key="NA" 
+    idx=""
     if(var_ == "amo" ):
         var_ = kite[0].VARIETY_REGULAR
     Noid = userids[uapi]+var_+t['tradingsymbol']+t['product']
@@ -916,10 +925,16 @@ def extract_order_update(t,uapi):
         _key = str(orderIds.get(t['order_id'],1))+stype
     else:
         _key = str(orderIds.get(t['order_id'],1))+ltype
-    if(t['status']=="REJECTED" or t ['status']=="CANCELLED"):
+    if(t['status']=="REJECTED" or t['status']=="CANCELLED"):
         #lastrejectedtime = datetime.datetime.now()
         if "NIFTY" in t['tradingsymbol']:
             lastrejectedtime = datetime.datetime.now() + datetime.timedelta(minutes = 5)
+        if "BANKNIFTY" in t['tradingsymbol']:
+            idx="BNF"
+        loid = str(uapi)+str(oid)
+        if loid in passiveOrders:
+            passiveOrders.remove(loid)
+            passiveStatusCache.remove(str(uapi)+"^"+idx)
         RemoveFromOrdersInProcess(ts_,uapi)
         return
         positionsLock.acquire()
@@ -1230,7 +1245,7 @@ def reconPositions():
                     print(kpos)
                     if(kpos['quantity']==0):
                         continue
-                    print(kpos)
+                    logging.info("recPXX:"+str(kpos))
                     if (kpos['tradingsymbol']==ts and kpos['product']==pdt):
                         found=True
                         print(kpos)
@@ -1244,6 +1259,7 @@ def reconPositions():
                             #intraday_positions[Noid][0]["opp_orderid"] = order['order_id']
                             break
                 if(not found):
+                    logging.info("adding "+str(Noid)+" to delete list")
                     deleteList.append(Noid)
         for oid in deleteList:
             if(intraday_positions.__contains__(oid)):
@@ -1257,8 +1273,8 @@ def reconPositions():
                 RemoveFromOrdersInProcess(intraday_positions[oid][0]['tradingsymbol'],apikey[index])
                 del intraday_positions[oid]
         positionsLock.release()
-        print("###intrday_pos:"+str(intraday_positions))
-        logging.info("###intrday_pos:"+str(intraday_positions)+" for uapi:"+str(apikey[index]))
+        logging.info("###lintrday_pos for upi:"+str(apikey[index])+" ::"+str(intraday_positions))
+    logging.info("###intrday_pos:"+str(intraday_positions))
 
 def populateCE():
     try:
@@ -1319,7 +1335,6 @@ def populateClose():
         print(token_close_price[NIFTY_TICKER])
     except Exception as e:
         logging.error("Error processing close data:"+str(e))
-        print(repr(e))
     print("Close populated")
 def populateHigh():
     try:
@@ -1340,7 +1355,6 @@ def populateHigh():
         print(token_high_price[NIFTY_TICKER])
     except Exception as e:
         logging.error("Error processing prev high data:"+str(e))
-        print(repr(e))
     logging.info("Prev High populated")
 def populateCpr():
     try:
@@ -1439,7 +1453,6 @@ def preparePDHSymbols():
 
     except Exception as e:
         logging.error("Error sending PDH orders:"+str(e))
-        print(repr(e))
 
     try:
         time.sleep(5)
@@ -1455,6 +1468,7 @@ def preparePDHSymbols():
 passiveOrders = []
 def exitShortStraddle(modifiedidx):
     try:
+        logging.info("###intrday_pos before recon:"+str(intraday_positions))
         reconPositions()
     except Exception as e:
         logging.error("Exception in reconPos.. Proceedin with exiting straddle::"+str(e))
@@ -1489,7 +1503,6 @@ def exitShortStraddle(modifiedidx):
                     passiveOrders.remove(newoid)
             else:
                 logging.error("Not a passive order:"+str(j['order_id']))
-                logging.error(repr(e))
 
 passiveStatusCache = {}
 passivelockActivated = {}
@@ -1563,7 +1576,8 @@ def sendShortStraddle(idx,direction):
             tmpCache[TS2]=0
             passiveStatusCache[apikey[index]+"^"+idx]=copy.deepcopy(tmpCache)
             tmpCache.clear()
-    print("sendShortStraddle:passiveStatusCache:"+str(passiveStatusCache))
+            logging.info("XXsendShortStraddle:passiveStatusCache:"+str(passiveStatusCache))
+    logging.info("sendShortStraddle:passiveStatusCache:"+str(passiveStatusCache))
 
     #reconPositions()
     #Below is requird because, order updates are not processed in passive setup (lightweight)
@@ -1618,6 +1632,9 @@ def cancel_squareoff_open_orders(threadName):
                             nfdirection="UP"
                         else:
                             nfdirection="DOWN"
+                        if(abs(token_price_ltp[BNF_TICKER]-token_close_price[BNF_TICKER]) > 0.01* token_close_price[BNF_TICKER]):
+                            logging.info("Gap-Up/Down of more than 1%, will wait for 2 mins")
+                            time.sleep(120)
                         time.sleep(0.9999)
                         t1 = threading.Thread(target=sendShortStraddle, args=("BNF",bnfdirection,))
                         #t2 = threading.Thread(target=sendShortStraddle, args=("NIFTY",nfdirection,))
@@ -1680,14 +1697,17 @@ def cancel_squareoff_open_orders(threadName):
                         logging.info("SL for passive hit for:"+str(idxx))
                         exitShortStraddle(idxx)
                         exitedList.append(idxx)
-                    if(passivelockActivated[idxx]>0 and currentCost>(passivelockActivated[idxx] + (PASSIVE_TRAIL * CURR_LOTS))):
+                    global PASSIVE_TRAIL
+                    #if(passivelockActivated[idxx]>0 and currentCost>(passivelockActivated[idxx] + (PASSIVE_TRAIL * CURR_LOTS))):
+                    if(passivelockActivated[idxx]>0 and (currentCost - passivelockActivated[idxx] > (PASSIVE_TRAIL * CURR_LOTS))):
                         logging.error("Exiting:Locking was activated and current cost reduced from:"+str(passivelockActivated[idxx])+" to:"+str(currentCost))
                         exitShortStraddle(idxx)
                         exitedList.append(idxx)
                     elif(cost-currentCost>=PASSIVE_PROFIT * CURR_LOTS):
                         if(currentCost<passivelockActivated[idxx]):
                             print("Locking Activated "+str(idx)+" currentCost:"+str(currentCost))
-                            logging.info("Locking Activated "+str(idx)+" currentCost:"+str(currentCost))
+                            PASSIVE_TRAIL = PASSIVE_TRAIL + (currentCost - passivelockActivated[idxx])/CURR_LOTS;
+                            logging.info("Locking Activated "+str(idx)+" currentCost:"+str(currentCost)+" PASSIVE_TRAIL:"+str(PASSIVE_TRAIL))
                             passivelockActivated[idxx]=currentCost
                 for item in exitedList:
                     del passiveStatusCache[item]
@@ -1696,7 +1716,7 @@ def cancel_squareoff_open_orders(threadName):
             logging.error("Exception in CANCEL thread:"+str(e))
             logging.error(repr(e))
         if( datetime.datetime.today().weekday() >=SHORT_STRADDLE_FROM_DAY and datetime.datetime.today().weekday() <=SHORT_STRADDLE_TO_DAY ):
-            if(datetime.datetime.now().hour>=15 and datetime.datetime.now().minute>=1):
+            if(datetime.datetime.now().hour>=15 and datetime.datetime.now().minute>=1 and len(intraday_positions)>0):
                 for idxx in passiveStatusCache:
                     exitShortStraddle(idxx)
         if(datetime.datetime.now().hour>=15 and datetime.datetime.now().minute>=30):
@@ -1781,7 +1801,7 @@ def trailCOlogic(uindex):
         for key in dpositions:
             #j = dpositions[key]
             print("key:"+str(key))
-            uapi = apikey[index]
+            uapi = apikey[uindex]
             for j in dpositions[key]:
                 if( uapi+str(j['order_id']) in passiveOrders):
                     continue
@@ -1860,7 +1880,7 @@ def trailCOlogic(uindex):
                                             positionsLock.release()
                                     except Exception as e:
                                         logging.info("Error in modifying CO :"+str(j['opp_orderid']))
-                                        print(repr(e))
+                                        logging.error(repr(e))
                                         if("exceeded" in repr(e)):
                                            kites[uindex].exit_order(variety=j['variety'],order_id=j['order_id'])
                                         elif("processed" in repr(e)):
@@ -1903,7 +1923,7 @@ def trailCOlogic(uindex):
                                             positionsLock.release()
                                     except Exception as e:
                                         logging.info("Error in modifying CO :"+str(j['opp_orderid']))
-                                        print(repr(e))
+                                        logging.error(repr(e))
                                         if("exceeded" in repr(e)):
                                             kites[uindex].exit_order(variety=j['variety'],order_id=j['order_id'])
                                         elif("processed" in repr(e)):
@@ -1912,7 +1932,7 @@ def trailCOlogic(uindex):
                     logging.debug("Error getting orders:".format(e)) 
     except Exception as e:
         logging.debug("Error getting orders:".format(e)) 
-        print(repr(e))
+        logging.error(repr(e))
 
 populateCE()
 populatePE()
@@ -1938,7 +1958,7 @@ for tName in ioithreadList:
    ioithreads.append(thread)
    ioithreadID += 1
 
-time.sleep(5)
+time.sleep(20)
 #sendShortStraddle("BNF","UP")
 #preparePDHSymbols()
 

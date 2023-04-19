@@ -35,40 +35,6 @@ logging.basicConfig(
 
 #logging.getLogger("pika").setLevel(logging.WARNING)
 
-FIFO = '/tmp/AutoLtp'
-DATA_HOST='127.0.0.1'
-try:
-    os.mkfifo(FIFO)
-except OSError as oe:
-    #if oe.errno != errno.EEXIST:
-    print("FIFO already exists")
-
-squareoff_orders = {}
-co_sl_orders = {}
-MAXORDERS=1
-MAXPROFIT=10000
-MAXLOSS=-5000
-straddleadjusted=True
-
-bnfvalue=0
-bnfdirection="UP"
-nfvalue=0
-nfdirection="DOWN"
-
-token_price_ltp[BNF_TICKER]=bnfvalue
-token_price_ltp[NIFTY_TICKER]=nfvalue
-
-blockList = []
-try:
-    with open('blocklist.csv') as f:
-        lines = f.readlines()
-        for record in lines:
-            blockList.append(record.strip('\n'))
-except OSError as oe:
-    #if oe.errno != errno.EEXIST:
-    print("blocklist.csv doesnt exists")
-
-
 
 pin=""
 passwd=""

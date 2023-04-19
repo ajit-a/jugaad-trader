@@ -12,6 +12,7 @@ kill_pids()
 }
 pids=()
 
+sudo service httpd start
 HOUR=`date --date="-${BACK} day 5 hour 30 min" +%H`
 MINS=`date --date="-${BACK} day 5 hour 30 min" +%M`
 
@@ -318,7 +319,8 @@ then
 	egrep "NFO-FUT" instruments.xml |egrep ${wM} >> OptionsEQ.csv
 fi
 
-cut -d, -f1 OptionsEQ.csv > bnf_instruments
+#cut -d, -f1 OptionsEQ.csv > bnf_instruments
+egrep "NIFTY" OptionsEQ.csv | cut -d, -f1 > bnf_instruments
 px=`egrep "NIFTY BANK" idx.txt|cut -d, -f2|sed s/,//g`
 cg=`egrep "NIFTY BANK" idx.txt|cut -d, -f3|sed s/,//g`
 #cg=`expr 100 \\* $cg`

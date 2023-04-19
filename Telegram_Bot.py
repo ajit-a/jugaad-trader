@@ -26,6 +26,10 @@ bot.
 
 import logging
 import subprocess
+import glob
+import os
+import datetime
+import time
 from urllib import parse
 
 from telegram import __version__ as TG_VER
@@ -49,6 +53,15 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+for sessfile in glob.glob(".zsession*"):
+    mod_time=time.ctime(os.path.getmtime(sessfile))
+    #Mon Mar 20 22:08:31 2023
+    day=int(mod_time.split()[2])
+    tday=int(datetime.datetime.today().day)
+    print("day:"+str(day)+" tday:"+str(tday))
+    if(day != tday):
+        os.remove(sessfile)
 
 passwd = {}
 apikeys = {}
