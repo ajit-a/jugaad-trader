@@ -64,7 +64,9 @@ if (mod_time!=-1 and day != tday):
     os.remove(session_file)
 
 kite = Zerodha()
+success=False
 def startautosession():
+    global success
     try:
         kite.user_id = user
         kite.password = passwd
@@ -81,6 +83,7 @@ def startautosession():
         p = kite.profile()
 
         click.echo(click.style("Logged in successfully as {}".format(p['user_name']), fg='green'))
+        success=True
         with open(os.path.join(app_dir, session_file), "wb") as fp:
             pickle.dump(kite.reqsession, fp)
         click.echo("Saved session successfully")
@@ -123,6 +126,8 @@ try:
         print("Existing Session loaded for user:"+user)
     else:
         startautosession()
+        if success == False:
+            sys.exit(os.EX_DATAERR)
         print("Session started for user:"+user)
 except Exception as e:
     logging.error("Existing session not found:"+repr(e))
@@ -130,6 +135,8 @@ except Exception as e:
     print(repr(e)+" Logging in for user:"+user)
     if(len(sys.argv) == 4):
         startautosession()
+        if success == False:
+            sys.exit(os.EX_DATAERR)
     else:
         startsession()
 sys.exit()

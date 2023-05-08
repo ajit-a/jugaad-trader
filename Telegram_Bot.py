@@ -153,14 +153,17 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 print(msg)
                 await update.message.reply_text(msg)
             else:
-                msg="Captured pin for:"+str(user)+" id:"+str(userid)+" in reply:"+original_msg
+                msg="Captured pin for:"+str(user)+" id:"+str(userid)
                 print(msg)
-                await update.message.reply_text(msg)
                 #subprocess.Popen(['python', 'OMS_passive.py', pin, passwd[userid], userids[userid]])
-                subprocess.call(['python', 'generateSession.py', pin, passwd[userid], userids[userid]])
+                out=subprocess.call(['python', 'generateSession.py', pin, passwd[userid], userids[userid]])
+                print(out)
+                if out != 0:
+                    raise AttributeError("Login failed. Maybe Pin has expired")
+                await update.message.reply_text("Login successfull for:"+str(user))
                 #await update.message.reply_text("Captured token for:"+user+" id:"+str(userid)+" in reply:"+original_msg)
         except Exception as e:
-            erromsg = "Error while login: for:"+str(user)+" id:"+str(userid)+" in reply:"+original_msg
+            errormsg = "Error while login: for:"+str(user)+" id:"+str(userid)+" Login failed. Maybe Pin has expired"
             print(errormsg)
             await update.message.reply_text(errormsg)
             print(repr(e))
